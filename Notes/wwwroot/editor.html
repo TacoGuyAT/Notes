@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Editor - Notes</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<header>
+  <button id="btnNew">New</button>
+
+  <div class="dropdown" id="notesDD">
+    <button id="btnNotes" class="note-name" title="Switch note">Untitled ▾</button>
+    <div class="dropdown-menu" id="notesMenu">
+      <input id="notesSearch" class="dropdown-search" placeholder="Search name or slug..." autocomplete="off">
+      <div class="dropdown-list" id="notesList"></div>
+    </div>
+  </div>
+
+  <button id="btnVisibility" title="Toggle who can see this note">🔒 Private</button>
+  <button id="btnCopy" style="display:none">Copy link</button>
+
+  <button id="btnLayout">⇕ Layout</button>
+  <div class="spacer"></div>
+  <span id="whoami"></span>
+  <button id="btnLogout" style="display:none">Logout</button>
+</header>
+
+<div class="split" id="split">
+  <textarea id="src" placeholder="# Type markdown..." disabled></textarea>
+  <div class="gutter" id="gutter" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Resize panes"></div>
+  <div class="preview" id="out"></div>
+</div>
+
+<dialog id="newDialog">
+  <h3>New note</h3>
+  <div class="body">
+    <label>title <input id="newTitle" maxlength="200" placeholder="Untitled"></label>
+  </div>
+  <div class="actions">
+    <button id="newCancel">Cancel</button>
+    <button id="newCreate" class="btn-primary">Create</button>
+  </div>
+</dialog>
+
+<script src="/auth.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const src = $('src'), out = $('out'), split = $('split'), gutter = $('gutter');
+const btnVisibility = $('btnVisibility'), btnCopy = $('btnCopy'), btnNotes = $('btnNotes');
+
+let note = null;  // { id, title, public, slug }
+let saveTimer, vertical = false;
+
+initAuth(start, () => location.href = '/');
+
+$('btnLogout').onclick = async () => { await fetch('/api/logout', { method: 'POST' }); location.href = '/'; };
+
+async function api(url, opts) {
+  const r = await fetch(url, opts);
+  if (r.status === 401) { location.href = '/'; await new Promise(() => {}); }
+  return r;
+}
+
+// ---------- notes ----------
+
+const LAST_NOTE_KEY = 'notes:lastNoteId';
+const rememberNote = id => { try { localStorage.setItem(LAST_NOTE_KEY, id); } catch {} };
+const rememberedNoteId = () => { try { return Number(localStorage.getItem(LAST_NOTE_KEY)); } catch { return NaN; } };
+
+async function start() {
+  const list = await (await api('/api/notes')).json();
+  const wanted = new URLSearchParams(location.search).get('slug');
+  const bySlug = wanted && list.find(d => d.slug === wanted);
+  if (wanted) history.replaceState({}, '', '/editor');
+
+  const remembered = list.find(d => d.id === rememberedNoteId());
+  const target = bySlug || remembered || list[0];
+
+  if (target) await openNote(target.id);
+  else await createNote('Untitled');
+  await loadNoteList();
+  src.disabled = false;
+}
+
+const notesSearch = $('notesSearch'), notesList = $('notesList');
+let allNotes = [];  // cached so filtering as you type never re-hits the server
+
+async function loadNoteList() {
+  allNotes = await (await api('/api/notes')).json();
+  renderNoteList();
+}
+
+function renderNoteList() {
+  const q = notesSearch.value.trim().toLowerCase();
+  const shown = q
+    ? allNotes.filter(d => d.title.toLowerCase().includes(q) || (d.slug || '').includes(q))
+    : allNotes;
+  notesList.innerHTML = shown.map(d =>
+    `<a href="#" data-id="${d.id}"><span class="title">${d.public ? '🌐' : '🔒'} ${esc(d.title)}</span>` +
+    // the slug outlives unpublishing, so show it for anything that has ever been public
+    `${d.slug ? `<span class="slug">${esc(d.slug)}</span>` : ''}</a>`).join('')
+    || '<div class="dropdown-empty">No matching notes</div>';
+  notesList.querySelectorAll('a').forEach(a => a.onclick = e => {
+    e.preventDefault();
+    $('notesDD').classList.remove('open');
+    openNote(Number(a.dataset.id));
+  });
+}
+
+notesSearch.oninput = renderNoteList;
+
+async function openNote(id) {
+  const d = await (await api(`/api/notes/${id}`)).json();
+  note = { id: d.id, title: d.title, public: d.public, slug: d.slug };
+  rememberNote(note.id);
+  src.value = d.content;
+  out.innerHTML = d.html;
+  syncHeader();
+}
+
+async function createNote(title) {
+  const r = await api('/api/notes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title })
+  });
+  const d = await r.json();
+  note = { id: d.id, title: d.title, public: d.public, slug: d.slug };
+  rememberNote(note.id);
+  src.value = '';
+  out.innerHTML = '';
+  syncHeader();
+}
+
+function syncHeader() {
+  btnNotes.textContent = (note.title || 'Untitled') + ' ▾';
+  btnVisibility.textContent = note.public ? '🌐 Public' : '🔒 Private';
+  btnCopy.style.display = note.public ? '' : 'none';  // a private note has no link to copy
+  btnCopy.title = note.public ? shareLink() : '';
+}
+
+const shareLink = () => location.origin + '/' + note.slug;
+
+const newDialog = $('newDialog'), newTitle = $('newTitle');
+
+$('btnNew').onclick = () => {
+  newTitle.value = '';
+  newDialog.showModal();
+  newTitle.focus();
+};
+$('newCancel').onclick = () => newDialog.close();
+$('newCreate').onclick = async () => {
+  newDialog.close();
+  await createNote(newTitle.value.trim() || 'Untitled');
+  await loadNoteList();
+  src.focus();
+};
+newDialog.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); $('newCreate').click(); }
+});
+closeOnBackdrop(newDialog);
+
+$('btnNotes').onclick = () => {
+  const opening = !$('notesDD').classList.contains('open');
+  $('notesDD').classList.toggle('open');
+  if (!opening) return;
+  notesSearch.value = '';
+  renderNoteList();
+  notesSearch.focus();
+  loadNoteList();
+};
+
+document.addEventListener('pointerdown', e => {
+  if (!$('notesDD').contains(e.target)) $('notesDD').classList.remove('open');
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') $('notesDD').classList.remove('open');
+});
+
+// ---------- editing ----------
+
+src.addEventListener('input', () => {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(save, 300);
+});
+
+async function save() {
+  if (!note) return;
+  const r = await api(`/api/notes/${note.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title: note.title, content: src.value })
+  });
+  if (!r.ok) return;
+  const d = await r.json();
+  out.innerHTML = d.html;
+}
+
+// ---------- visibility + share link ----------
+
+btnVisibility.onclick = async () => {
+  const r = await api(`/api/notes/${note.id}/visibility`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ public: !note.public })
+  });
+  const d = await r.json();
+  note.public = d.public;
+  note.slug = d.slug;
+  syncHeader();
+  loadNoteList();
+};
+
+btnCopy.onclick = async () => {
+  try {
+    await navigator.clipboard.writeText(shareLink());
+    btnCopy.textContent = 'Copied ✓';
+    setTimeout(() => btnCopy.textContent = 'Copy link', 1200);
+  } catch {
+    prompt('Copy this link:', shareLink());  // clipboard blocked (insecure origin / denied)
+  }
+};
+
+// ---------- layout + resize bar ----------
+
+let fraction = .5;
+
+function applyFraction() {
+  src.style.flexGrow = fraction;
+  out.style.flexGrow = 1 - fraction;
+}
+applyFraction();
+
+$('btnLayout').onclick = () => {
+  vertical = !vertical;
+  split.classList.toggle('vertical', vertical);
+  gutter.setAttribute('aria-orientation', vertical ? 'horizontal' : 'vertical');
+};
+
+gutter.addEventListener('pointerdown', e => {
+  gutter.setPointerCapture(e.pointerId);
+  gutter.classList.add('dragging');
+  document.body.classList.add('resizing');
+  document.body.classList.toggle('vertical', vertical);
+});
+
+gutter.addEventListener('pointermove', e => {
+  if (!gutter.classList.contains('dragging')) return;
+  const r = split.getBoundingClientRect();
+  const raw = vertical ? (e.clientY - r.top) / r.height : (e.clientX - r.left) / r.width;
+  fraction = Math.min(.9, Math.max(.1, raw));
+  applyFraction();
+});
+
+function endDrag(e) {
+  gutter.classList.remove('dragging');
+  document.body.classList.remove('resizing', 'vertical');
+  if (e.pointerId != null && gutter.hasPointerCapture(e.pointerId)) gutter.releasePointerCapture(e.pointerId);
+}
+gutter.addEventListener('pointerup', endDrag);
+gutter.addEventListener('pointercancel', endDrag);
+
+gutter.addEventListener('dblclick', () => { fraction = .5; applyFraction(); });
+
+gutter.addEventListener('keydown', e => {
+  const step = e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -.02
+    : e.key === 'ArrowRight' || e.key === 'ArrowDown' ? .02 : 0;
+  if (!step) return;
+  e.preventDefault();
+  fraction = Math.min(.9, Math.max(.1, fraction + step));
+  applyFraction();
+});
+</script>
+</body>
+</html>

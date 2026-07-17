@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notes</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<main class="home">
+  <div class="home-inner">
+    <h1>Write markdown. Share a link.</h1>
+    <p class="tagline">
+      Write your notes and watch them come to life as you type. When one's worth sharing,
+      publish it and send the link. Anyone can open it, no account needed.
+    </p>
+
+    <div class="cta">
+      <button id="btnStart" class="btn-primary">Create an account</button>
+      <button id="btnSignIn">I already have one</button>
+    </div>
+
+    <h2>This is what the editor looks like</h2>
+    <div class="demo">
+<pre># Shopping list
+
+Milk, **eggs**, and a [new keyboard](https://example.com).
+
+- [x] pick a colour
+- [ ] regret the colour
+
+> See it take shape as you type.
+</pre>
+      <div class="preview">
+        <h1>Shopping list</h1>
+        <p>Milk, <strong>eggs</strong>, and a <a href="https://example.com">new keyboard</a>.</p>
+        <ul>
+          <li><input type="checkbox" checked disabled> pick a colour</li>
+          <li><input type="checkbox" disabled> regret the colour</li>
+        </ul>
+        <blockquote><p>See it take shape as you type.</p></blockquote>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="/auth.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+
+const auth = initAuth(() => location.replace('/editor'));
+
+$('btnStart').onclick = () => auth.openRegister();
+$('btnSignIn').onclick = () => auth.openLogin();
+</script>
+</body>
+</html>

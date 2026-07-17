@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Note</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<header>
+  <span class="note-name" id="noteTitle"></span>
+  <button id="btnCopy" title="Copy link to this note" style="display:none">Copy link</button>
+  <div class="spacer"></div>
+  <span id="whoami"></span>
+  <a class="btn" id="btnEditor" href="/editor" style="display:none">Editor</a>
+  <button id="btnLogin">Login</button>
+  <button id="btnRegister">Register</button>
+  <button id="btnLogout" style="display:none">Logout</button>
+</header>
+
+<div class="content" id="content">Loading...</div>
+
+<script src="/auth.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const btnEditor = $('btnEditor'), btnCopy = $('btnCopy'), noteTitle = $('noteTitle');
+
+const slug = new URLSearchParams(location.search).get('slug') || location.pathname.slice(1);
+const shareLink = location.origin + '/' + slug;
+
+async function showNote() {
+  const content = $('content');
+  const r = await fetch(`/api/public/${encodeURIComponent(slug)}`);
+  if (!r.ok) { content.textContent = 'Not found.'; return; }
+  const { title, html } = await r.json();
+  document.title = title;
+  noteTitle.textContent = title;
+  btnCopy.style.display = '';
+  content.innerHTML = html;
+}
+
+initAuth(async () => {
+  btnEditor.style.display = '';
+  const mine = await (await fetch('/api/notes')).json();
+  if (mine.some(d => d.slug === slug)) { location.replace('/editor?slug=' + encodeURIComponent(slug)); return; }
+  showNote();
+}, () => {
+  btnEditor.style.display = 'none';
+  showNote();
+});
+
+btnCopy.onclick = async () => {
+  try {
+    await navigator.clipboard.writeText(shareLink);
+    btnCopy.textContent = 'Copied ✓';
+    setTimeout(() => btnCopy.textContent = 'Copy link', 1200);
+  } catch {
+    prompt('Copy this link:', shareLink);  // clipboard blocked (insecure origin / denied)
+  }
+};
+</script>
+</body>
+</html>

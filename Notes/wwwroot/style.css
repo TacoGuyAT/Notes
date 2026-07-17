@@ -1,0 +1,319 @@
+:root {
+  --bg: #1e1e1e;
+  --panel: #252526;
+  --line: #333;
+  --btn: #333;
+  --btn-hover: #3f3f42;
+  --btn-active: #2a2a2b;
+  --border: #444;
+  --border-hover: #5a5a5e;
+  --text: #ddd;
+  --muted: #8a8a8a;
+  --accent: #4a9eff;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: monospace;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- header ---------- */
+
+header {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .5rem;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+header .brand { font-weight: bold; padding: 0 .5rem 0 .2rem; text-decoration: none; color: var(--text); }
+.spacer { flex: 1; }
+#whoami { color: var(--muted); padding: 0 .4rem; }
+
+/* ---------- inputs ---------- */
+
+button, .btn {
+  background: var(--btn);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: .3rem .6rem;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+button:hover, .btn:hover {
+  background: var(--btn-hover);
+  border-color: var(--border-hover);
+}
+button:active, .btn:active {
+  background: var(--btn-active);
+  border-color: var(--border);
+  padding: .35rem .6rem .25rem;
+}
+button:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button:disabled { opacity: .5; cursor: default; background: var(--btn); border-color: var(--border); }
+
+.note-name { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#noteTitle { font-size: 1.25rem; font-weight: bold; max-width: 50vw; }
+
+.btn-primary { background: #2d5f8f; border-color: #3a7ab8; }
+.btn-primary:hover { background: #36719f; border-color: #4a9eff; }
+.btn-primary:active { background: #27527c; border-color: #3a7ab8; }
+
+input {
+  background: #1c1c1c;
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: .4rem .5rem;
+  font: inherit;
+}
+input:hover { border-color: var(--border-hover); }
+input:focus { outline: none; border-color: var(--accent); }
+
+/* ---------- editor split ---------- */
+
+.split { flex: 1; display: flex; min-height: 0; }
+.split.vertical { flex-direction: column; }
+
+.split > textarea { flex: 1 1 0; min-width: 0; min-height: 0; }
+.split > .preview { flex: 1 1 0; min-width: 0; min-height: 0; }
+
+textarea, .preview, .content { padding: 1rem; overflow: auto; }
+textarea {
+  background: var(--panel);
+  color: var(--text);
+  border: none;
+  resize: none;
+  outline: none;
+  font-size: 14px;
+}
+.preview, .content { background: var(--bg); }
+
+/* ---------- markdown ---------- */
+
+.preview, .content {
+  font-family: monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #d4d4d4;
+}
+.preview > :first-child, .content > :first-child { margin-top: 0; }
+.preview > :last-child, .content > :last-child { margin-bottom: 0; }
+
+.preview h1, .content h1, .preview h2, .content h2, .preview h3, .content h3,
+.preview h4, .content h4, .preview h5, .content h5, .preview h6, .content h6 {
+  margin: 1.6em 0 .6em;
+  line-height: 1.25;
+  font-weight: 600;
+  color: #fff;
+}
+.preview h1, .content h1 { font-size: 1.8em; padding-bottom: .3em; border-bottom: 1px solid var(--line); }
+.preview h2, .content h2 { font-size: 1.4em; padding-bottom: .25em; border-bottom: 1px solid var(--line); }
+.preview h3, .content h3 { font-size: 1.2em; }
+.preview h4, .content h4 { font-size: 1.05em; }
+.preview h5, .content h5, .preview h6, .content h6 { font-size: .95em; color: var(--muted); }
+
+.preview p, .content p { margin: .9em 0; }
+.preview a, .content a { color: var(--accent); text-decoration: none; }
+.preview a:hover, .content a:hover { text-decoration: underline; }
+.preview strong, .content strong { color: #fff; font-weight: 700; }
+.preview em, .content em { color: #e8e8e8; }
+
+.preview ul, .content ul, .preview ol, .content ol { margin: .9em 0; padding-left: 1.5em; }
+.preview li, .content li { margin: .3em 0; }
+.preview li::marker, .content li::marker { color: var(--muted); }
+/* A "loose" list (any blank line in it) wraps every item in a <p>, which would otherwise
+   contribute full paragraph margins and space the items far apart. */
+.preview li > p, .content li > p { margin: 0; }
+
+/* Sizing every checkbox in em matters: the browser default is a fixed 13px box, which makes a
+   checkbox row taller than a text-only row and breaks the vertical rhythm of a mixed list. */
+.preview input[type="checkbox"], .content input[type="checkbox"] {
+  width: 1em;
+  height: 1em;
+  margin: 0 .15em 0 0;
+  vertical-align: -.15em;
+  accent-color: var(--accent);
+}
+
+/* The task-list marker is only the checkbox that *starts* the item: <li><input ...>, or
+   <li><p><input ...> in a loose list. A "- [x] a" line lazily continued by a "[ ] b" line folds
+   both into one <li>, so a second checkbox can sit mid-paragraph; that one is ordinary inline
+   content and must keep the plain styling above, not be pulled into the marker gutter. */
+.preview li:has(> input[type="checkbox"]:first-child),
+.preview li:has(> p:first-child > input[type="checkbox"]:first-child),
+.content li:has(> input[type="checkbox"]:first-child),
+.content li:has(> p:first-child > input[type="checkbox"]:first-child) { list-style: none; }
+
+.preview li > input[type="checkbox"]:first-child,
+.preview li > p:first-child > input[type="checkbox"]:first-child,
+.content li > input[type="checkbox"]:first-child,
+.content li > p:first-child > input[type="checkbox"]:first-child {
+  margin-left: -1.15em;  /* 1em box + .15em gap: the label lands on the plain-bullet text column */
+}
+
+.preview blockquote, .content blockquote {
+  margin: 1em 0;
+  padding: .1em 1em;
+  border-left: 3px solid var(--border);
+  color: var(--muted);
+}
+
+.preview code, .content code {
+  font-size: .95em;
+  background: #2d2d30;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: .1em .35em;
+}
+.preview pre, .content pre {
+  background: #2d2d30;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: .8em 1em;
+  overflow-x: auto;
+  line-height: 1.5;
+}
+.preview pre code, .content pre code { background: none; border: none; padding: 0; font-size: .9em; }
+
+.preview table, .content table { border-collapse: collapse; margin: 1em 0; display: block; overflow-x: auto; }
+.preview th, .content th, .preview td, .content td { border: 1px solid var(--border); padding: .4em .7em; }
+.preview th, .content th { background: var(--panel); text-align: left; font-weight: 600; }
+
+.preview hr, .content hr { border: none; border-top: 1px solid var(--line); margin: 1.8em 0; }
+.preview img, .content img { max-width: 100%; border-radius: 4px; }
+
+.gutter {
+  flex: 0 0 6px;
+  position: relative;
+  background: none;
+  cursor: col-resize;
+  border: none;
+  padding: 0;
+}
+.gutter::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  margin-left: -.5px;
+  background: var(--line);
+}
+.gutter:hover::before, .gutter.dragging::before { background: var(--accent); }
+
+.split.vertical .gutter { cursor: row-resize; }
+.split.vertical .gutter::before {
+  top: 50%;
+  bottom: auto;
+  left: 0;
+  right: 0;
+  width: auto;
+  height: 1px;
+  margin: -.5px 0 0;
+}
+body.resizing { cursor: col-resize; }
+body.resizing.vertical { cursor: row-resize; }
+body.resizing * { user-select: none; }
+
+/* ---------- auth dialog ---------- */
+
+dialog {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 0;
+  min-width: 300px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, .5);
+}
+dialog::backdrop { background: rgba(0, 0, 0, .6); }
+dialog h3 { margin: 0; padding: .8rem 1rem; border-bottom: 1px solid var(--line); font-size: 1rem; }
+dialog .body { padding: 1rem; display: flex; flex-direction: column; gap: .6rem; }
+dialog label { display: flex; flex-direction: column; gap: .25rem; color: var(--muted); font-size: .8rem; }
+dialog input { width: 100%; }
+dialog .actions { display: flex; gap: .5rem; justify-content: flex-end; padding: .8rem 1rem; border-top: 1px solid var(--line); }
+dialog .error { color: #ff6b6b; font-size: .8rem; min-height: 1rem; }
+
+/* ---------- dropdown ---------- */
+
+.dropdown { position: relative; }
+.dropdown-menu {
+  display: none;
+  flex-direction: column;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  min-width: 220px;
+  z-index: 10;
+  max-height: calc(100vh - 3rem);
+}
+
+.dropdown-search {
+  flex: 0 0 auto;
+  width: 100%;
+  padding: .45rem .6rem;
+  background: var(--panel);
+  color: var(--text);
+  border: none;
+  border-bottom: 1px solid var(--border);
+  font: inherit;
+  outline: none;
+}
+.dropdown-search:focus { border-bottom-color: var(--accent); }
+
+.dropdown-list { overflow-y: auto; }
+.dropdown-empty { padding: .5rem .6rem; color: var(--muted); }
+.dropdown-menu a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: .4rem .6rem;
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.dropdown-menu a:hover { background: var(--btn-hover); }
+.dropdown-menu .title { overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+.dropdown-menu .slug { font-size: .75em; color: #6b6b6b; }
+.dropdown.open .dropdown-menu { display: flex; }
+
+/* ---------- home ---------- */
+
+.home { flex: 1; overflow: auto; padding: 3rem 1.5rem; }
+.home-inner { max-width: 900px; margin: 0 auto; }
+.home h1 { font-size: 2rem; margin: 0 0 .5rem; }
+.home .tagline { color: var(--muted); margin: 0 0 1.5rem; line-height: 1.6; }
+.home .cta { display: flex; gap: .5rem; margin-bottom: 2.5rem; }
+.home h2 { font-size: 1rem; color: var(--muted); font-weight: normal; margin: 0 0 .6rem; }
+
+.demo { display: flex; border: 1px solid var(--line); min-height: 260px; }
+.demo pre {
+  flex: 1 1 50%;
+  margin: 0;
+  padding: 1rem;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  overflow: auto;
+  font-size: 14px;
+  white-space: pre-wrap;
+}
+.demo .preview { flex: 1 1 50%; padding: 1rem; overflow: auto; }
+.demo .preview > :first-child { margin-top: 0; }
+
+@media (max-width: 700px) {
+  .demo { flex-direction: column; }
+  .demo pre { border-right: none; border-bottom: 1px solid var(--line); }
+}
